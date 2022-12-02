@@ -4,7 +4,7 @@ Utility to generate a basic JSON representation of a SpiceDB Schema
 ## Build Binary
 
 ```
-go build -o spice2json
+go build
 ```
 
 ---
