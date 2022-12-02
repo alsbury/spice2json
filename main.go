@@ -22,6 +22,10 @@ func check(e error) {
 }
 
 func main() {
+	if len(os.Args) < 3 {
+		displayUsageInfo()
+		return
+	}
 	inputFileName := os.Args[1]          //os.Args[2]
 	outputFileName := os.Args[2]         //os.Args[2]
 	b, err := os.ReadFile(inputFileName) // just pass the file name
@@ -43,6 +47,14 @@ func main() {
 	output, _ := PrettyString(buf.String())
 	data := []byte(output)
 	os.WriteFile(outputFileName, data, 0644)
+}
+
+func displayUsageInfo() {
+	fmt.Println("")
+	fmt.Println("Please provide a valid input schema and a path to the output json")
+	fmt.Println("")
+	fmt.Println("Example: spice2json myschema.zed myschema.json")
+	fmt.Println("")
 }
 
 // https://gosamples.dev/pretty-print-json/
