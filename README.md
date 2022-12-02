@@ -1,4 +1,4 @@
-# spicedb-schema-to-json
+# spice2json
 Utility to generate a basic JSON representation of a SpiceDB Schema
 
 ## Build Binary
