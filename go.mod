@@ -1,4 +1,4 @@
-module util
+module spice2json
 
 go 1.19
 

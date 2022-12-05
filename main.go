@@ -53,7 +53,7 @@ func displayUsageInfo() {
 	fmt.Println("")
 	fmt.Println("Please provide a valid input schema and a path to the output json")
 	fmt.Println("")
-	fmt.Println("Example: spice2json myschema.zed myschema.json")
+	fmt.Println("Example: spice2json input_schema.zed output.json")
 	fmt.Println("")
 }
 
@@ -116,25 +116,42 @@ func mapDefinition(def *corev1.NamespaceDefinition) (*Object, error) {
 		Namespace:   namespace,
 		Relations:   relations,
 		Permissions: permissions,
+		Comment:     getMetadataComments(def.GetMetadata()),
 	}, nil
 }
 
 func mapRelation(relation *corev1.Relation) *Relation {
-	return &Relation{Name: relation.Name}
+	return &Relation{
+		Name:    relation.Name,
+		Comment: getMetadataComments(relation.GetMetadata()),
+	}
 }
 
 func mapPermission(relation *corev1.Relation) *Permission {
 	return &Permission{
-		Name: relation.Name,
+		Name:    relation.Name,
+		Comment: getMetadataComments(relation.GetMetadata()),
 	}
 }
 
+func getMetadataComments(metaData *corev1.Metadata) string {
+	comment := ``
+	for _, d := range metaData.GetMetadataMessage() {
+		if d.GetTypeUrl() == `type.googleapis.com/impl.v1.DocComment` {
+			comment += string(d.GetValue()[2:]) + "\n"
+		}
+	}
+	return strings.TrimSpace(comment)
+}
+
 type Relation struct {
-	Name string `json:"name"`
+	Name    string `json:"name"`
+	Comment string `json:"comment"`
 }
 
 type Permission struct {
-	Name string `json:"name"`
+	Name    string `json:"name"`
+	Comment string `json:"comment"`
 }
 
 type Object struct {
@@ -142,6 +159,7 @@ type Object struct {
 	Namespace   string        `json:"namespace"`
 	Relations   []*Relation   `json:"relations"`
 	Permissions []*Permission `json:"permissions"`
+	Comment     string        `json:"comment"`
 }
 
 type Schema struct {
