@@ -4,7 +4,13 @@ Utility to generate a basic JSON representation of a SpiceDB Schema
 ## Build Binary
 
 ```
-go build
+go build -ldflags="-s -w"
+```
+
+Compress using [upx](https://upx.github.io/) for a smaller build
+
+```
+upx --brute spice2json
 ```
 
 ---
