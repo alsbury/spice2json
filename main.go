@@ -26,8 +26,10 @@ func main() {
 		displayUsageInfo()
 		return
 	}
-	inputFileName := os.Args[1]          //os.Args[2]
-	outputFileName := os.Args[2]         //os.Args[2]
+	inputFileName := os.Args[1]  //os.Args[2]
+	outputFileName := os.Args[2] //os.Args[2]
+	fmt.Println("Input file: " + inputFileName)
+	fmt.Println("Output file: " + outputFileName)
 	b, err := os.ReadFile(inputFileName) // just pass the file name
 	if err != nil {
 		fmt.Print(err)
@@ -122,8 +124,9 @@ func mapDefinition(def *corev1.NamespaceDefinition) (*Object, error) {
 
 func mapRelation(relation *corev1.Relation) *Relation {
 	return &Relation{
-		Name:    relation.Name,
-		Comment: getMetadataComments(relation.GetMetadata()),
+		Name:             relation.Name,
+		Comment:          getMetadataComments(relation.GetMetadata()),
+		AllowedRelations: getAllowedRelationships(relation.TypeInformation.AllowedDirectRelations),
 	}
 }
 
@@ -141,17 +144,27 @@ func getMetadataComments(metaData *corev1.Metadata) string {
 			comment += string(d.GetValue()[2:]) + "\n"
 		}
 	}
-	return strings.TrimSpace(comment)
+	return comment
+}
+
+func getAllowedRelationships(allowedRelations []*corev1.AllowedRelation) []string {
+	response := []string{}
+	for _, d := range allowedRelations {
+		response = append(response, d.Namespace)
+	}
+	return response
 }
 
 type Relation struct {
-	Name    string `json:"name"`
-	Comment string `json:"comment"`
+	Name             string   `json:"name"`
+	Comment          string   `json:"comment"`
+	AllowedRelations []string `json:"allowed_relations"`
 }
 
 type Permission struct {
-	Name    string `json:"name"`
-	Comment string `json:"comment"`
+	Name       string `json:"name"`
+	Comment    string `json:"comment"`
+	Permission string `json:"permission"`
 }
 
 type Object struct {
