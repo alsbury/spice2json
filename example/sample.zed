@@ -1,0 +1,21 @@
+/*
+* category-path: user>preferences
+* description: this is a longer description
+*/
+definition user {}
+
+/*
+* category-path: platform
+* description: this is a longer description
+*/
+definition platform {
+    /*
+    * category-path: platform>user
+    * description: this is a longer description
+    */
+	relation administrator: user
+
+	permission super_admin = administrator
+
+	permission create_tenant = administrator
+}
