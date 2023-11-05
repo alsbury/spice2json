@@ -91,8 +91,8 @@ func WriteSchemaTo(definition []*corev1.NamespaceDefinition, w io.Writer) error 
 }
 
 func mapDefinition(def *corev1.NamespaceDefinition) (*Object, error) {
-	relations := []*Relation{}
-	permissions := []*Permission{}
+	var relations []*Relation
+	var permissions []*Permission
 	for _, r := range def.Relation {
 		kind := ns.GetRelationKind(r)
 		if kind == iv1.RelationMetadata_PERMISSION {
@@ -121,9 +121,15 @@ func mapDefinition(def *corev1.NamespaceDefinition) (*Object, error) {
 }
 
 func mapRelation(relation *corev1.Relation) *Relation {
+	var types []*RelationType
+	for _, t := range relation.TypeInformation.AllowedDirectRelations {
+		types = append(types, mapRelationType(t))
+	}
+
 	return &Relation{
 		Name:    relation.Name,
 		Comment: getMetadataComments(relation.GetMetadata()),
+		Types:   types,
 	}
 }
 
@@ -131,6 +137,32 @@ func mapPermission(relation *corev1.Relation) *Permission {
 	return &Permission{
 		Name:    relation.Name,
 		Comment: getMetadataComments(relation.GetMetadata()),
+	}
+}
+
+func mapRelationType(relationType *corev1.AllowedRelation) *RelationType {
+	Relation, ok := relationType.RelationOrWildcard.(*corev1.AllowedRelation_Relation)
+	var relationName string
+	if !ok {
+		relationName = "*"
+	} else {
+		relationName = Relation.Relation
+		if relationName == "..." {
+			relationName = ""
+		}
+	}
+
+	caveat := relationType.RequiredCaveat
+	var caveatName string
+	if caveat != nil {
+		caveatName = caveat.CaveatName
+	} else {
+		caveatName = ""
+	}
+	return &RelationType{
+		Type:     relationType.Namespace,
+		Relation: relationName,
+		Caveat:   caveatName,
 	}
 }
 
@@ -145,8 +177,15 @@ func getMetadataComments(metaData *corev1.Metadata) string {
 }
 
 type Relation struct {
-	Name    string `json:"name"`
-	Comment string `json:"comment"`
+	Name    string          `json:"name"`
+	Types   []*RelationType `json:"types"`
+	Comment string          `json:"comment"`
+}
+
+type RelationType struct {
+	Type     string `json:"type"`
+	Relation string `json:"relation"`
+	Caveat   string `json:"caveat"`
 }
 
 type Permission struct {
