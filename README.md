@@ -3,8 +3,16 @@ Utility to generate a basic JSON representation of a SpiceDB Schema
 
 ## Build Binary
 
+Build for mac
+
+```shell
+GOARCH=arm64 go build -ldflags="-s -w"
 ```
-go build -ldflags="-s -w"
+
+Build for intel
+
+```shell
+GOARCH=amd64 go build -ldflags="-s -w"
 ```
 
 Compress using [upx](https://upx.github.io/) for a smaller build
