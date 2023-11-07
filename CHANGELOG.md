@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0
+## 0.2.0
 
 * Add representation for relation types with caveats
 * Add permission user set data with unions, intersections, and 
@@ -12,9 +12,15 @@
 * Exit with non-zero return code on errors
 * Upgrade to latest spicedb and go versions
 
+## 0.1.0
+
+* Update to spicedb 1.16.1
+* Add support for allowed relations
+* CI workflow based on Github actions
+
 ## 0.0.2
 
-* Output comments on definitions, relations, and permissions
+* Add readme and usage docs
 
 ## 0.0.1
 
