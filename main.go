@@ -194,33 +194,33 @@ func mapCaveat(caveat *corev1.CaveatDefinition) *Caveat {
 
 type Definition struct {
 	Name        string        `json:"name"`
-	Namespace   string        `json:"namespace"`
-	Relations   []*Relation   `json:"relations"`
-	Permissions []*Permission `json:"permissions"`
-	Comment     string        `json:"comment"`
+	Namespace   string        `json:"namespace,omitempty"`
+	Relations   []*Relation   `json:"relations,omitempty"`
+	Permissions []*Permission `json:"permissions,omitempty"`
+	Comment     string        `json:"comment,omitempty"`
 }
 
 type Relation struct {
 	Name    string          `json:"name"`
 	Types   []*RelationType `json:"types"`
-	Comment string          `json:"comment"`
+	Comment string          `json:"comment,omitempty"`
 }
 
 type RelationType struct {
 	Type     string `json:"type"`
-	Relation string `json:"relation"`
-	Caveat   string `json:"caveat"`
+	Relation string `json:"relation,omitempty"`
+	Caveat   string `json:"caveat,omitempty"`
 }
 
 type Permission struct {
 	Name    string `json:"name"`
-	Comment string `json:"comment"`
+	Comment string `json:"comment,omitempty"`
 }
 
 type Caveat struct {
 	Name       string   `json:"name"`
 	Parameters []string `json:"parameters"`
-	Comment    string   `json:"comment"`
+	Comment    string   `json:"comment,omitempty"`
 }
 
 type Schema struct {
