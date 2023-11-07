@@ -37,10 +37,20 @@ func main() {
 
 	def, _ := compiler.Compile(in, &namespace)
 	var buf strings.Builder
-	WriteSchemaTo(def, &buf)
+	err = WriteSchemaTo(def, &buf)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	output, _ := PrettyString(buf.String())
+
 	data := []byte(output)
-	os.WriteFile(outputFileName, data, 0644)
+	err = os.WriteFile(outputFileName, data, 0644)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 }
 
 func displayUsageInfo() {
@@ -51,7 +61,7 @@ func displayUsageInfo() {
 	fmt.Println("")
 }
 
-// https://gosamples.dev/pretty-print-json/
+// PrettyString https://gosamples.dev/pretty-print-json/
 func PrettyString(str string) (string, error) {
 	var prettyJSON bytes.Buffer
 	if err := json.Indent(&prettyJSON, []byte(str), "", "  "); err != nil {
@@ -60,9 +70,7 @@ func PrettyString(str string) (string, error) {
 	return prettyJSON.String(), nil
 }
 
-/**
- * Portions of this code were pulled from https://github.com/oviva-ag/spicedb
- */
+// WriteSchemaTo Portions of this code were pulled from https://github.com/oviva-ag/spicedb
 func WriteSchemaTo(schema *compiler.CompiledSchema, w io.Writer) error {
 	var definitions []*Definition
 	for _, def := range schema.ObjectDefinitions {
