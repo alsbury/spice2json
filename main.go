@@ -159,8 +159,63 @@ func mapRelation(relation *corev1.Relation) *Relation {
 func mapPermission(relation *corev1.Relation) *Permission {
 	return &Permission{
 		Name:    relation.Name,
+		UserSet: mapUserSet(relation.GetUsersetRewrite()),
 		Comment: getMetadataComments(relation.GetMetadata()),
 	}
+}
+
+func mapUserSet(userset *corev1.UsersetRewrite) *UserSet {
+	union := userset.GetUnion()
+	if union != nil {
+		return &UserSet{
+			Operation: "union",
+			Children:  mapUserSetChild(union.GetChild()),
+		}
+	}
+
+	intersection := userset.GetIntersection()
+	if intersection != nil {
+		return &UserSet{
+			Operation: "intersection",
+			Children:  mapUserSetChild(intersection.GetChild()),
+		}
+	}
+
+	exclusion := userset.GetExclusion()
+	if exclusion != nil {
+		return &UserSet{
+			Operation: "exclusion",
+			Children:  mapUserSetChild(exclusion.GetChild()),
+		}
+	}
+
+	return nil
+}
+
+func mapUserSetChild(children []*corev1.SetOperation_Child) []*UserSet {
+	var sets []*UserSet
+	for _, child := range children {
+		computed := child.GetComputedUserset()
+		if computed != nil {
+			sets = append(sets, &UserSet{
+				Relation: computed.Relation,
+			})
+		}
+
+		tuple := child.GetTupleToUserset()
+		if tuple != nil {
+			sets = append(sets, &UserSet{
+				Relation:   tuple.Tupleset.Relation,
+				Permission: tuple.ComputedUserset.Relation,
+			})
+		}
+
+		set := child.GetUsersetRewrite()
+		if set != nil {
+			sets = append(sets, mapUserSet(set))
+		}
+	}
+	return sets
 }
 
 func mapRelationType(relationType *corev1.AllowedRelation) *RelationType {
@@ -233,8 +288,16 @@ type RelationType struct {
 }
 
 type Permission struct {
-	Name    string `json:"name"`
-	Comment string `json:"comment,omitempty"`
+	Name    string   `json:"name"`
+	UserSet *UserSet `json:"userSet"`
+	Comment string   `json:"comment,omitempty"`
+}
+
+type UserSet struct {
+	Operation  string     `json:"operation,omitempty"`
+	Relation   string     `json:"relation,omitempty"`
+	Permission string     `json:"permission,omitempty"`
+	Children   []*UserSet `json:"children,omitempty"`
 }
 
 type Caveat struct {
