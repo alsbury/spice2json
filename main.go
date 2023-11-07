@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -16,15 +17,19 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 3 {
+	namespace := flag.String("n", "", "default namespace")
+	flag.Parse()
+
+	inputFileName := flag.Arg(0)
+	if inputFileName == "" {
 		displayUsageInfo()
-		return
+		os.Exit(1)
 	}
-	inputFileName := os.Args[1]          //os.Args[2]
-	outputFileName := os.Args[2]         //os.Args[2]
+
 	b, err := os.ReadFile(inputFileName) // just pass the file name
 	if err != nil {
 		fmt.Print(err)
+		os.Exit(1)
 	}
 	schemaSource := string(b) // convert content to a 'string'
 
@@ -33,23 +38,26 @@ func main() {
 		SchemaString: schemaSource,
 	}
 
-	namespace := "default"
-
-	def, _ := compiler.Compile(in, &namespace)
+	def, _ := compiler.Compile(in, namespace)
 	var buf strings.Builder
 	err = WriteSchemaTo(def, &buf)
 	if err != nil {
 		fmt.Println(err)
-		return
+		os.Exit(1)
 	}
 
 	output, _ := PrettyString(buf.String())
 
-	data := []byte(output)
-	err = os.WriteFile(outputFileName, data, 0644)
-	if err != nil {
-		fmt.Println(err)
-		return
+	outputFileName := flag.Arg(1)
+	if outputFileName != "" {
+		data := []byte(output)
+		err = os.WriteFile(outputFileName, data, 0644)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	} else {
+		fmt.Print(output)
 	}
 }
 
@@ -57,7 +65,7 @@ func displayUsageInfo() {
 	fmt.Println("")
 	fmt.Println("Please provide a valid input schema and a path to the output json")
 	fmt.Println("")
-	fmt.Println("Example: spice2json input_schema.zed output.json")
+	fmt.Println("Example: spice2json [-n namespace] input_schema.zed [output.json]")
 	fmt.Println("")
 }
 
@@ -116,11 +124,15 @@ func mapDefinition(def *corev1.NamespaceDefinition) (*Definition, error) {
 	}
 
 	splits := strings.SplitN(def.Name, "/", 2)
-	if len(splits) != 2 {
-		return nil, fmt.Errorf("namespace missing for %q", def.Name)
+	var name string
+	var namespace string
+	if len(splits) == 2 {
+		namespace = splits[0]
+		name = splits[1]
+	} else {
+		name = splits[0]
+		namespace = ""
 	}
-	namespace := splits[0]
-	name := splits[1]
 
 	return &Definition{
 		Name:        name,
