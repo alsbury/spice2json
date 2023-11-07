@@ -54,7 +54,7 @@ JSON output from above example
   "definitions": [
     {
       "name": "user",
-      "comment": "/** represents a user of the system */"
+      "comment": "represents a user of the system"
     },
     {
       "name": "platform",

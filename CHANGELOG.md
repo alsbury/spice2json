@@ -8,6 +8,7 @@
 * Don't output empty fields
 * Output to stdout if no output file specified
 * Make namespace optional
+* Delete comment start and end marks from comments
 * Exit with non-zero return code on errors
 * Upgrade to latest spicedb and go versions
 

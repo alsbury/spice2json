@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 
 	ns "github.com/authzed/spicedb/pkg/namespace"
@@ -244,11 +245,13 @@ func mapRelationType(relationType *corev1.AllowedRelation) *RelationType {
 	}
 }
 
+var commentRegex = regexp.MustCompile("(/[*]{1,2} ?|// ?| ?[*] | ?[*]?/)")
+
 func getMetadataComments(metaData *corev1.Metadata) string {
-	comment := ``
+	comment := ""
 	for _, d := range metaData.GetMetadataMessage() {
-		if d.GetTypeUrl() == `type.googleapis.com/impl.v1.DocComment` {
-			comment += string(d.GetValue()[2:]) + "\n"
+		if d.GetTypeUrl() == "type.googleapis.com/impl.v1.DocComment" {
+			comment += commentRegex.ReplaceAllString(string(d.GetValue()[2:]), "") + "\n"
 		}
 	}
 	return strings.TrimSpace(comment)
