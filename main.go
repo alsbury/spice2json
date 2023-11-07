@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 
 	ns "github.com/authzed/spicedb/pkg/namespace"
@@ -15,24 +17,20 @@ import (
 	"github.com/authzed/spicedb/pkg/schemadsl/input"
 )
 
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
 func main() {
-	if len(os.Args) < 3 {
+	namespace := flag.String("n", "", "default namespace")
+	flag.Parse()
+
+	inputFileName := flag.Arg(0)
+	if inputFileName == "" {
 		displayUsageInfo()
-		return
+		os.Exit(1)
 	}
-	inputFileName := os.Args[1]  //os.Args[2]
-	outputFileName := os.Args[2] //os.Args[2]
-	fmt.Println("Input file: " + inputFileName)
-	fmt.Println("Output file: " + outputFileName)
+
 	b, err := os.ReadFile(inputFileName) // just pass the file name
 	if err != nil {
 		fmt.Print(err)
+		os.Exit(1)
 	}
 	schemaSource := string(b) // convert content to a 'string'
 
@@ -41,25 +39,38 @@ func main() {
 		SchemaString: schemaSource,
 	}
 
-	namespace := "default"
-
-	def, _ := compiler.Compile(in, &namespace)
+	def, _ := compiler.Compile(in, namespace)
 	var buf strings.Builder
-	WriteSchemaTo(def.ObjectDefinitions, &buf)
+	err = WriteSchemaTo(def, &buf)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	output, _ := PrettyString(buf.String())
-	data := []byte(output)
-	os.WriteFile(outputFileName, data, 0644)
+
+	outputFileName := flag.Arg(1)
+	if outputFileName != "" {
+		data := []byte(output)
+		err = os.WriteFile(outputFileName, data, 0644)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	} else {
+		fmt.Print(output)
+	}
 }
 
 func displayUsageInfo() {
 	fmt.Println("")
 	fmt.Println("Please provide a valid input schema and a path to the output json")
 	fmt.Println("")
-	fmt.Println("Example: spice2json input_schema.zed output.json")
+	fmt.Println("Example: spice2json [-n namespace] input_schema.zed [output.json]")
 	fmt.Println("")
 }
 
-// https://gosamples.dev/pretty-print-json/
+// PrettyString https://gosamples.dev/pretty-print-json/
 func PrettyString(str string) (string, error) {
 	var prettyJSON bytes.Buffer
 	if err := json.Indent(&prettyJSON, []byte(str), "", "  "); err != nil {
@@ -68,20 +79,27 @@ func PrettyString(str string) (string, error) {
 	return prettyJSON.String(), nil
 }
 
-/**
- * Portions of this code were pulled from https://github.com/oviva-ag/spicedb
- */
-func WriteSchemaTo(definition []*corev1.NamespaceDefinition, w io.Writer) error {
-	var objects []*Object
-	for _, def := range definition {
+// WriteSchemaTo Portions of this code were pulled from https://github.com/oviva-ag/spicedb
+func WriteSchemaTo(schema *compiler.CompiledSchema, w io.Writer) error {
+	var definitions []*Definition
+	for _, def := range schema.ObjectDefinitions {
 		o, err := mapDefinition(def)
 		if err != nil {
 			return fmt.Errorf("failed to export %q: %w", def.Name, err)
 		}
-		objects = append(objects, o)
+		definitions = append(definitions, o)
 	}
 
-	data, err := json.Marshal(map[string][]*Object{"definitions": objects})
+	var caveats []*Caveat
+	for _, caveat := range schema.CaveatDefinitions {
+		o := mapCaveat(caveat)
+		caveats = append(caveats, o)
+	}
+
+	data, err := json.Marshal(&Schema{
+		Definitions: definitions,
+		Caveats:     caveats,
+	})
 	if err != nil {
 		return fmt.Errorf("unable to serialize schema for export: %w", err)
 	}
@@ -92,9 +110,9 @@ func WriteSchemaTo(definition []*corev1.NamespaceDefinition, w io.Writer) error 
 	return nil
 }
 
-func mapDefinition(def *corev1.NamespaceDefinition) (*Object, error) {
-	relations := []*Relation{}
-	permissions := []*Permission{}
+func mapDefinition(def *corev1.NamespaceDefinition) (*Definition, error) {
+	var relations []*Relation
+	var permissions []*Permission
 	for _, r := range def.Relation {
 		kind := ns.GetRelationKind(r)
 		if kind == iv1.RelationMetadata_PERMISSION {
@@ -107,13 +125,17 @@ func mapDefinition(def *corev1.NamespaceDefinition) (*Object, error) {
 	}
 
 	splits := strings.SplitN(def.Name, "/", 2)
-	if len(splits) != 2 {
-		return nil, fmt.Errorf("namespace missing for %q", def.Name)
+	var name string
+	var namespace string
+	if len(splits) == 2 {
+		namespace = splits[0]
+		name = splits[1]
+	} else {
+		name = splits[0]
+		namespace = ""
 	}
-	namespace := splits[0]
-	name := splits[1]
 
-	return &Object{
+	return &Definition{
 		Name:        name,
 		Namespace:   namespace,
 		Relations:   relations,
@@ -123,58 +145,171 @@ func mapDefinition(def *corev1.NamespaceDefinition) (*Object, error) {
 }
 
 func mapRelation(relation *corev1.Relation) *Relation {
+	var types []*RelationType
+	for _, t := range relation.TypeInformation.AllowedDirectRelations {
+		types = append(types, mapRelationType(t))
+	}
+
 	return &Relation{
-		Name:             relation.Name,
-		Comment:          getMetadataComments(relation.GetMetadata()),
-		AllowedRelations: getAllowedRelationships(relation.TypeInformation.AllowedDirectRelations),
+		Name:    relation.Name,
+		Comment: getMetadataComments(relation.GetMetadata()),
+		Types:   types,
 	}
 }
 
 func mapPermission(relation *corev1.Relation) *Permission {
 	return &Permission{
 		Name:    relation.Name,
+		UserSet: mapUserSet(relation.GetUsersetRewrite()),
 		Comment: getMetadataComments(relation.GetMetadata()),
 	}
 }
 
-func getMetadataComments(metaData *corev1.Metadata) string {
-	comment := ``
-	for _, d := range metaData.GetMetadataMessage() {
-		if d.GetTypeUrl() == `type.googleapis.com/impl.v1.DocComment` {
-			comment += string(d.GetValue()[2:]) + "\n"
+func mapUserSet(userset *corev1.UsersetRewrite) *UserSet {
+	union := userset.GetUnion()
+	if union != nil {
+		return &UserSet{
+			Operation: "union",
+			Children:  mapUserSetChild(union.GetChild()),
 		}
 	}
-	return comment
+
+	intersection := userset.GetIntersection()
+	if intersection != nil {
+		return &UserSet{
+			Operation: "intersection",
+			Children:  mapUserSetChild(intersection.GetChild()),
+		}
+	}
+
+	exclusion := userset.GetExclusion()
+	if exclusion != nil {
+		return &UserSet{
+			Operation: "exclusion",
+			Children:  mapUserSetChild(exclusion.GetChild()),
+		}
+	}
+
+	return nil
 }
 
-func getAllowedRelationships(allowedRelations []*corev1.AllowedRelation) []string {
-	response := []string{}
-	for _, d := range allowedRelations {
-		response = append(response, d.Namespace)
+func mapUserSetChild(children []*corev1.SetOperation_Child) []*UserSet {
+	var sets []*UserSet
+	for _, child := range children {
+		computed := child.GetComputedUserset()
+		if computed != nil {
+			sets = append(sets, &UserSet{
+				Relation: computed.Relation,
+			})
+		}
+
+		tuple := child.GetTupleToUserset()
+		if tuple != nil {
+			sets = append(sets, &UserSet{
+				Relation:   tuple.Tupleset.Relation,
+				Permission: tuple.ComputedUserset.Relation,
+			})
+		}
+
+		set := child.GetUsersetRewrite()
+		if set != nil {
+			sets = append(sets, mapUserSet(set))
+		}
 	}
-	return response
+	return sets
+}
+
+func mapRelationType(relationType *corev1.AllowedRelation) *RelationType {
+	Relation, ok := relationType.RelationOrWildcard.(*corev1.AllowedRelation_Relation)
+	var relationName string
+	if !ok {
+		relationName = "*"
+	} else {
+		relationName = Relation.Relation
+		if relationName == "..." {
+			relationName = ""
+		}
+	}
+
+	caveat := relationType.RequiredCaveat
+	var caveatName string
+	if caveat != nil {
+		caveatName = caveat.CaveatName
+	} else {
+		caveatName = ""
+	}
+	return &RelationType{
+		Type:     relationType.Namespace,
+		Relation: relationName,
+		Caveat:   caveatName,
+	}
+}
+
+var commentRegex = regexp.MustCompile("(/[*]{1,2} ?|// ?| ?[*] | ?[*]?/)")
+
+func getMetadataComments(metaData *corev1.Metadata) string {
+	comment := ""
+	for _, d := range metaData.GetMetadataMessage() {
+		if d.GetTypeUrl() == "type.googleapis.com/impl.v1.DocComment" {
+			comment += commentRegex.ReplaceAllString(string(d.GetValue()[2:]), "") + "\n"
+		}
+	}
+	return strings.TrimSpace(comment)
+}
+
+func mapCaveat(caveat *corev1.CaveatDefinition) *Caveat {
+	var parameters []string
+	for _, t := range caveat.ParameterTypes {
+		parameters = append(parameters, t.TypeName)
+	}
+
+	return &Caveat{
+		Name:       caveat.Name,
+		Parameters: parameters,
+		Comment:    getMetadataComments(caveat.Metadata),
+	}
+}
+
+type Definition struct {
+	Name        string        `json:"name"`
+	Namespace   string        `json:"namespace,omitempty"`
+	Relations   []*Relation   `json:"relations,omitempty"`
+	Permissions []*Permission `json:"permissions,omitempty"`
+	Comment     string        `json:"comment,omitempty"`
 }
 
 type Relation struct {
-	Name             string   `json:"name"`
-	Comment          string   `json:"comment"`
-	AllowedRelations []string `json:"allowed_relations"`
+	Name    string          `json:"name"`
+	Types   []*RelationType `json:"types"`
+	Comment string          `json:"comment,omitempty"`
+}
+
+type RelationType struct {
+	Type     string `json:"type"`
+	Relation string `json:"relation,omitempty"`
+	Caveat   string `json:"caveat,omitempty"`
 }
 
 type Permission struct {
-	Name       string `json:"name"`
-	Comment    string `json:"comment"`
-	Permission string `json:"permission"`
+	Name    string   `json:"name"`
+	UserSet *UserSet `json:"userSet"`
+	Comment string   `json:"comment,omitempty"`
 }
 
-type Object struct {
-	Name        string        `json:"name"`
-	Namespace   string        `json:"namespace"`
-	Relations   []*Relation   `json:"relations"`
-	Permissions []*Permission `json:"permissions"`
-	Comment     string        `json:"comment"`
+type UserSet struct {
+	Operation  string     `json:"operation,omitempty"`
+	Relation   string     `json:"relation,omitempty"`
+	Permission string     `json:"permission,omitempty"`
+	Children   []*UserSet `json:"children,omitempty"`
+}
+
+type Caveat struct {
+	Name       string   `json:"name"`
+	Parameters []string `json:"parameters"`
+	Comment    string   `json:"comment,omitempty"`
 }
 
 type Schema struct {
-	Objects []*Object `json:"objects"`
+	Definitions []*Definition `json:"definitions"`
+	Caveats     []*Caveat     `json:"caveats,omitempty"`
 }
