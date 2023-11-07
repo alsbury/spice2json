@@ -15,12 +15,6 @@ import (
 	"github.com/authzed/spicedb/pkg/schemadsl/input"
 )
 
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
 func main() {
 	if len(os.Args) < 3 {
 		displayUsageInfo()
@@ -43,7 +37,7 @@ func main() {
 
 	def, _ := compiler.Compile(in, &namespace)
 	var buf strings.Builder
-	WriteSchemaTo(def.ObjectDefinitions, &buf)
+	WriteSchemaTo(def, &buf)
 	output, _ := PrettyString(buf.String())
 	data := []byte(output)
 	os.WriteFile(outputFileName, data, 0644)
@@ -69,17 +63,26 @@ func PrettyString(str string) (string, error) {
 /**
  * Portions of this code were pulled from https://github.com/oviva-ag/spicedb
  */
-func WriteSchemaTo(definition []*corev1.NamespaceDefinition, w io.Writer) error {
-	var objects []*Object
-	for _, def := range definition {
+func WriteSchemaTo(schema *compiler.CompiledSchema, w io.Writer) error {
+	var definitions []*Definition
+	for _, def := range schema.ObjectDefinitions {
 		o, err := mapDefinition(def)
 		if err != nil {
 			return fmt.Errorf("failed to export %q: %w", def.Name, err)
 		}
-		objects = append(objects, o)
+		definitions = append(definitions, o)
 	}
 
-	data, err := json.Marshal(map[string][]*Object{"definitions": objects})
+	var caveats []*Caveat
+	for _, caveat := range schema.CaveatDefinitions {
+		o := mapCaveat(caveat)
+		caveats = append(caveats, o)
+	}
+
+	data, err := json.Marshal(&Schema{
+		Definitions: definitions,
+		Caveats:     caveats,
+	})
 	if err != nil {
 		return fmt.Errorf("unable to serialize schema for export: %w", err)
 	}
@@ -90,7 +93,7 @@ func WriteSchemaTo(definition []*corev1.NamespaceDefinition, w io.Writer) error 
 	return nil
 }
 
-func mapDefinition(def *corev1.NamespaceDefinition) (*Object, error) {
+func mapDefinition(def *corev1.NamespaceDefinition) (*Definition, error) {
 	var relations []*Relation
 	var permissions []*Permission
 	for _, r := range def.Relation {
@@ -111,7 +114,7 @@ func mapDefinition(def *corev1.NamespaceDefinition) (*Object, error) {
 	namespace := splits[0]
 	name := splits[1]
 
-	return &Object{
+	return &Definition{
 		Name:        name,
 		Namespace:   namespace,
 		Relations:   relations,
@@ -176,6 +179,27 @@ func getMetadataComments(metaData *corev1.Metadata) string {
 	return strings.TrimSpace(comment)
 }
 
+func mapCaveat(caveat *corev1.CaveatDefinition) *Caveat {
+	var parameters []string
+	for _, t := range caveat.ParameterTypes {
+		parameters = append(parameters, t.TypeName)
+	}
+
+	return &Caveat{
+		Name:       caveat.Name,
+		Parameters: parameters,
+		Comment:    getMetadataComments(caveat.Metadata),
+	}
+}
+
+type Definition struct {
+	Name        string        `json:"name"`
+	Namespace   string        `json:"namespace"`
+	Relations   []*Relation   `json:"relations"`
+	Permissions []*Permission `json:"permissions"`
+	Comment     string        `json:"comment"`
+}
+
 type Relation struct {
 	Name    string          `json:"name"`
 	Types   []*RelationType `json:"types"`
@@ -193,14 +217,13 @@ type Permission struct {
 	Comment string `json:"comment"`
 }
 
-type Object struct {
-	Name        string        `json:"name"`
-	Namespace   string        `json:"namespace"`
-	Relations   []*Relation   `json:"relations"`
-	Permissions []*Permission `json:"permissions"`
-	Comment     string        `json:"comment"`
+type Caveat struct {
+	Name       string   `json:"name"`
+	Parameters []string `json:"parameters"`
+	Comment    string   `json:"comment"`
 }
 
 type Schema struct {
-	Objects []*Object `json:"objects"`
+	Definitions []*Definition `json:"definitions"`
+	Caveats     []*Caveat     `json:"caveats,omitempty"`
 }
