@@ -1,5 +1,6 @@
 # spice2json
-Utility to generate a basic JSON representation of a SpiceDB Schema
+Utility to generate a simplified JSON representation of a SpiceDB Schema in order to power code
+generation in other languages.
 
 ## Build Binary
 
@@ -26,13 +27,16 @@ upx --brute spice2json
 ## Command Usage
 
 ```
-spice2json <input file> <output file>
+spice2json [-n namespace] input.zaml [output.json]
 ```
 
 ## Example
 
 This is a simple example of SpiceDB Schema DSL as input
 ```
+/** 
+ * represents a user of the system 
+ */
 definition user {}
 
 definition platform {
@@ -40,7 +44,7 @@ definition platform {
 
 	permission super_admin = administrator
 
-	permission create_tenant = administrator
+	permission create_tenant = super_admin + administrator
 }
 ```
 
@@ -50,24 +54,45 @@ JSON output from above example
   "definitions": [
     {
       "name": "user",
-      "namespace": "default",
-      "relations": [],
-      "permissions": []
+      "comment": "/** represents a user of the system */"
     },
     {
       "name": "platform",
-      "namespace": "default",
       "relations": [
         {
-          "name": "administrator"
+          "name": "administrator",
+          "types": [
+            {
+              "type": "user"
+            }
+          ]
         }
       ],
       "permissions": [
         {
-          "name": "super_admin"
+          "name": "super_admin",
+          "userSet": {
+            "operation": "union",
+            "children": [
+              {
+                "relation": "administrator"
+              }
+            ]
+          }
         },
         {
-          "name": "create_tenant"
+          "name": "create_tenant",
+          "userSet": {
+            "operation": "union",
+            "children": [
+              {
+                "relation": "super_admin"
+              },
+              {
+                "relation": "administrator"
+              }
+            ]
+          }
         }
       ]
     }

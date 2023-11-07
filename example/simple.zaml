@@ -1,0 +1,10 @@
+/** represents a user of the system */
+definition user {}
+
+definition platform {
+	relation administrator: user
+
+	permission super_admin = administrator
+
+	permission create_tenant = super_admin + administrator
+}
