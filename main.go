@@ -17,9 +17,17 @@ import (
 	"github.com/authzed/spicedb/pkg/schemadsl/input"
 )
 
+const VERSION = "0.2.2"
+
 func main() {
 	namespace := flag.String("n", "", "default namespace")
+	version := flag.Bool("v", false, "print version and exit")
 	flag.Parse()
+
+	if *version == true {
+		fmt.Println(VERSION)
+		os.Exit(0)
+	}
 
 	inputFileName := flag.Arg(0)
 	if inputFileName == "" {
