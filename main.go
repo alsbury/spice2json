@@ -15,6 +15,7 @@ import (
 	iv1 "github.com/authzed/spicedb/pkg/proto/impl/v1"
 	"github.com/authzed/spicedb/pkg/schemadsl/compiler"
 	"github.com/authzed/spicedb/pkg/schemadsl/input"
+	"github.com/imroc/req/v3"
 )
 
 const VERSION = "0.2.2"
@@ -22,6 +23,7 @@ const VERSION = "0.2.2"
 func main() {
 	namespace := flag.String("n", "", "default namespace")
 	version := flag.Bool("v", false, "print version and exit")
+	key := flag.String("k", "", "pre-shared key for rest / grpc schema")
 	flag.Parse()
 
 	if *version == true {
@@ -35,19 +37,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	b, err := os.ReadFile(inputFileName) // just pass the file name
-	if err != nil {
-		fmt.Print(err)
-		os.Exit(1)
-	}
-	schemaSource := string(b) // convert content to a 'string'
+	var schemaSource = readSchema(inputFileName, *key)
 
 	in := compiler.InputSchema{
 		Source:       input.Source(inputFileName),
 		SchemaString: schemaSource,
 	}
 
-	def, _ := compiler.Compile(in, namespace)
+	def, err := compiler.Compile(in, namespace)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	var buf strings.Builder
 	err = WriteSchemaTo(def, &buf)
 	if err != nil {
@@ -70,11 +72,53 @@ func main() {
 	}
 }
 
+func readSchema(inputFileName string, key string) string {
+	var isURL = regexp.MustCompile("^https?://.*(/v1/schema/read)?$")
+
+	if isURL.MatchString(inputFileName) {
+		if !strings.HasSuffix("/v1/schema/read", inputFileName) {
+			inputFileName = inputFileName + "/v1/schema/read"
+		}
+
+		var request = req.R()
+		if key != "" {
+			request.SetBearerAuthToken(key)
+		}
+
+		resp, err := request.Post(inputFileName)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		if resp.StatusCode != 200 {
+			fmt.Println(resp.String())
+			os.Exit(1)
+		}
+
+		var data SchemaResponse
+		err = json.Unmarshal(resp.Bytes(), &data)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		return data.SchemaText
+	} else {
+		b, err := os.ReadFile(inputFileName) // just pass the file name
+		if err != nil {
+			fmt.Print(err)
+			os.Exit(1)
+		}
+		return string(b)
+	}
+}
+
 func displayUsageInfo() {
 	fmt.Println("")
 	fmt.Println("Please provide a valid input schema and a path to the output json")
 	fmt.Println("")
-	fmt.Println("Example: spice2json [-n namespace] input_schema.zed [output.json]")
+	fmt.Println("Example: spice2json [flags] input_schema.zed [output.json]")
+	flag.Usage()
 	fmt.Println("")
 }
 
@@ -320,4 +364,8 @@ type Caveat struct {
 type Schema struct {
 	Definitions []*Definition `json:"definitions"`
 	Caveats     []*Caveat     `json:"caveats,omitempty"`
+}
+
+type SchemaResponse struct {
+	SchemaText string `json:"schemaText"`
 }
