@@ -2,14 +2,18 @@ module spice2json
 
 go 1.21
 
-require github.com/authzed/spicedb v1.26.0
+require (
+	github.com/authzed/authzed-go v0.10.1
+	github.com/authzed/grpcutil v0.0.0-20230908193239-4286bb1d6403
+	github.com/authzed/spicedb v1.26.0
+	github.com/imroc/req/v3 v3.42.1
+	google.golang.org/grpc v1.58.3
+)
 
 require (
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230512164433-5d1fd1a340c9 // indirect
-	github.com/authzed/authzed-go v0.10.1 // indirect
 	github.com/authzed/cel-go v0.17.5 // indirect
-	github.com/authzed/grpcutil v0.0.0-20230908193239-4286bb1d6403 // indirect
 	github.com/certifi/gocertifi v0.0.0-20210507211836-431795d63e8d // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
@@ -24,11 +28,9 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/imroc/req/v3 v3.42.1 // indirect
 	github.com/jzelinskie/stringz v0.0.2 // indirect
 	github.com/klauspost/compress v1.17.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/magefile/mage v1.15.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/onsi/ginkgo/v2 v2.12.0 // indirect
@@ -50,7 +52,6 @@ require (
 	google.golang.org/genproto v0.0.0-20231012201019-e917dd12ba7a // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231016165738-49dd2c1f3d0b // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231016165738-49dd2c1f3d0b // indirect
-	google.golang.org/grpc v1.58.3 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
