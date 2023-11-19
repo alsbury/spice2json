@@ -172,10 +172,13 @@ func readSchemaFromGrpc(host string, key string, insecureGrpc bool) string {
 }
 
 func displayUsageInfo() {
-	fmt.Println("")
+	fmt.Println("Spice2JSON " + VERSION)
 	fmt.Println("Please provide a valid input schema and a path to the output json")
 	fmt.Println("")
-	fmt.Println("Example: spice2json [flags] input_schema.zed [output.json]")
+	fmt.Println("Read from file: spice2json test_schema.zaml [output.json]")
+	fmt.Println("Read from stdin: spice2json -s")
+	fmt.Println("Read from spicedb rest client: spice2json -h http://localhost:8443")
+	fmt.Println("Read from spicedb grpc client: spice2json -g [-insecure] localhost:50051")
 	flag.Usage()
 }
 
