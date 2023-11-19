@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+* Add ability to read schema from stdin
+* Add ability to read from spicedb rest endpoint
+* Add ability to read from spicedb grpc endpoint
+* Add -v option to print version and exit
+
 ## 0.2.0
 
 * Add representation for relation types with caveats

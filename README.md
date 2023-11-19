@@ -26,9 +26,26 @@ upx --brute spice2json
 
 ## Command Usage
 
-```
+Read from file, output is to stdout unless an output file is given as the second argument.
+```shell
 spice2json [-n namespace] input.zaml [output.json]
 ```
+
+Read from stdin
+```shell
+spice2json -s < schema.zaml
+```
+
+Read from spicedb rest client
+```shell
+spice2json -h -k MyPreSharedKey http://localhost:8443
+```
+
+Read from spicedb grpc client
+```shell
+spice2json -g -k MyPreSharedKey [-insecure] localhost:50051
+```
+
 
 ## Example
 

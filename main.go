@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"io"
 	"os"
 	"regexp"
@@ -21,9 +19,11 @@ import (
 	iv1 "github.com/authzed/spicedb/pkg/proto/impl/v1"
 	"github.com/authzed/spicedb/pkg/schemadsl/compiler"
 	"github.com/imroc/req/v3"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-const VERSION = "0.2.2"
+const VERSION = "0.3.0"
 
 func main() {
 	namespace := flag.String("n", "", "default namespace")
