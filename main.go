@@ -110,8 +110,8 @@ func readSchemaFromFile(inputFileName string) string {
 }
 
 func readSchemaFromUrl(url string, key string) string {
-	if !strings.HasSuffix("/iv1/schema/read", url) {
-		url = url + "/iv1/schema/read"
+	if !strings.HasSuffix("/v1/schema/read", url) {
+		url = url + "/v1/schema/read"
 	}
 
 	var request = req.R()
