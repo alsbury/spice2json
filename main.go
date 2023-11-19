@@ -43,7 +43,11 @@ func main() {
 
 	var schema string
 	if *stdIn {
-
+		stdin, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			panic(err)
+		}
+		schema = string(stdin)
 	} else {
 		inputSrc := flag.Arg(0)
 		if inputSrc == "" {
