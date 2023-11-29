@@ -12,7 +12,7 @@ import (
 	"github.com/authzed/spicedb/pkg/schemadsl/compiler"
 )
 
-const VERSION = "0.3.0"
+const VERSION = "0.3.1"
 
 func main() {
 	namespace := flag.String("n", "", "default namespace")
