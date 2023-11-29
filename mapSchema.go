@@ -150,7 +150,7 @@ var commentRegex = regexp.MustCompile("(/[*]{1,2} ?|// ?| ?[*] | ?[*]?/)")
 func getMetadataComments(metaData *corev1.Metadata) string {
 	comment := ""
 	for _, d := range metaData.GetMetadataMessage() {
-		if d.GetTypeUrl() == "type.googleapis.com/impl.iv1.DocComment" {
+		if d.GetTypeUrl() == "type.googleapis.com/impl.v1.DocComment" {
 			comment += commentRegex.ReplaceAllString(string(d.GetValue()[2:]), "") + "\n"
 		}
 	}
