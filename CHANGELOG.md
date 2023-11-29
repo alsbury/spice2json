@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+* Fix regression causing comments not to be included in output
+
 ## 0.3.0
 
 * Add ability to read schema from stdin
