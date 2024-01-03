@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/authzed/spicedb/pkg/namespace"
-	"github.com/authzed/spicedb/pkg/proto/core/v1"
-	"github.com/authzed/spicedb/pkg/proto/impl/v1"
+	corev1 "github.com/authzed/spicedb/pkg/proto/core/v1"
+	implv1 "github.com/authzed/spicedb/pkg/proto/impl/v1"
 )
 
 func mapDefinition(def *corev1.NamespaceDefinition) (*Definition, error) {
@@ -158,9 +158,10 @@ func getMetadataComments(metaData *corev1.Metadata) string {
 }
 
 func mapCaveat(caveat *corev1.CaveatDefinition) *Caveat {
-	var parameters []string
-	for _, t := range caveat.ParameterTypes {
-		parameters = append(parameters, t.TypeName)
+	parameters := map[string]string{}
+
+	for key, value := range caveat.ParameterTypes {
+		parameters[key] = value.TypeName
 	}
 
 	return &Caveat{
@@ -191,9 +192,9 @@ type RelationType struct {
 }
 
 type Permission struct {
-	Name    string   `json:"name"`
+	Name    string `json:"name"`
 	UserSet *UserSet `json:"userSet"`
-	Comment string   `json:"comment,omitempty"`
+	Comment string `json:"comment,omitempty"`
 }
 
 type UserSet struct {
@@ -204,9 +205,9 @@ type UserSet struct {
 }
 
 type Caveat struct {
-	Name       string   `json:"name"`
-	Parameters []string `json:"parameters"`
-	Comment    string   `json:"comment,omitempty"`
+	Name       string            `json:"name"`
+	Parameters map[string]string `json:"parameters"`
+	Comment    string            `json:"comment,omitempty"`
 }
 
 type Schema struct {
