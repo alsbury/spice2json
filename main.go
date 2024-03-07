@@ -61,7 +61,7 @@ func main() {
 		SchemaString: schema,
 	}
 
-	def, err := compiler.Compile(in, namespace)
+	def, err := compiler.Compile(in, compiler.ObjectTypePrefix(*namespace))
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
