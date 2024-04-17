@@ -1,4 +1,4 @@
-module spice2json
+module github.com/alsbury/spice2json
 
 go 1.21
 
