@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.4
+
+* Bump dependencies
+
+## 0.3.3
+
+* Fix package name
+
 ## 0.3.2
 
 * Bump dependencies
