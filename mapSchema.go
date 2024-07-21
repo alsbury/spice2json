@@ -6,9 +6,23 @@ import (
 	"strings"
 
 	"github.com/authzed/spicedb/pkg/namespace"
-	"github.com/authzed/spicedb/pkg/proto/core/v1"
-	"github.com/authzed/spicedb/pkg/proto/impl/v1"
+	corev1 "github.com/authzed/spicedb/pkg/proto/core/v1"
+	implv1 "github.com/authzed/spicedb/pkg/proto/impl/v1"
 )
+
+func splitNamespace(fullname string) (string, string) {
+	splits := strings.SplitN(fullname, "/", 2)
+	var name string
+	var ns string
+	if len(splits) == 2 {
+		ns = splits[0]
+		name = splits[1]
+	} else {
+		name = splits[0]
+		ns = ""
+	}
+	return name, ns
+}
 
 func mapDefinition(def *corev1.NamespaceDefinition) (*Definition, error) {
 	var relations []*Relation
@@ -24,16 +38,7 @@ func mapDefinition(def *corev1.NamespaceDefinition) (*Definition, error) {
 		}
 	}
 
-	splits := strings.SplitN(def.Name, "/", 2)
-	var name string
-	var ns string
-	if len(splits) == 2 {
-		ns = splits[0]
-		name = splits[1]
-	} else {
-		name = splits[0]
-		ns = ""
-	}
+	name, ns := splitNamespace(def.Name)
 
 	return &Definition{
 		Name:        name,
@@ -120,15 +125,19 @@ func mapUserSetChild(children []*corev1.SetOperation_Child) []*UserSet {
 }
 
 func mapRelationType(relationType *corev1.AllowedRelation) *RelationType {
-	Relation, ok := relationType.RelationOrWildcard.(*corev1.AllowedRelation_Relation)
+	name, ns := splitNamespace(relationType.Namespace)
+
 	var relationName string
-	if !ok {
-		relationName = "*"
-	} else {
-		relationName = Relation.Relation
+	switch v := relationType.RelationOrWildcard.(type) {
+	case *corev1.AllowedRelation_Relation:
+		relationName = v.Relation
+
 		if relationName == "..." {
 			relationName = ""
 		}
+
+	case *corev1.AllowedRelation_PublicWildcard_:
+		relationName = "*"
 	}
 
 	caveat := relationType.RequiredCaveat
@@ -139,9 +148,10 @@ func mapRelationType(relationType *corev1.AllowedRelation) *RelationType {
 		caveatName = ""
 	}
 	return &RelationType{
-		Type:     relationType.Namespace,
-		Relation: relationName,
-		Caveat:   caveatName,
+		Type:      name,
+		Namespace: ns,
+		Relation:  relationName,
+		Caveat:    caveatName,
 	}
 }
 
@@ -158,9 +168,10 @@ func getMetadataComments(metaData *corev1.Metadata) string {
 }
 
 func mapCaveat(caveat *corev1.CaveatDefinition) *Caveat {
-	var parameters []string
-	for _, t := range caveat.ParameterTypes {
-		parameters = append(parameters, t.TypeName)
+	parameters := map[string]string{}
+
+	for key, value := range caveat.ParameterTypes {
+		parameters[key] = value.TypeName
 	}
 
 	return &Caveat{
@@ -185,9 +196,10 @@ type Relation struct {
 }
 
 type RelationType struct {
-	Type     string `json:"type"`
-	Relation string `json:"relation,omitempty"`
-	Caveat   string `json:"caveat,omitempty"`
+	Type      string `json:"type"`
+	Namespace string `json:"namespace,omitempty"`
+	Relation  string `json:"relation,omitempty"`
+	Caveat    string `json:"caveat,omitempty"`
 }
 
 type Permission struct {
@@ -204,9 +216,9 @@ type UserSet struct {
 }
 
 type Caveat struct {
-	Name       string   `json:"name"`
-	Parameters []string `json:"parameters"`
-	Comment    string   `json:"comment,omitempty"`
+	Name       string            `json:"name"`
+	Parameters map[string]string `json:"parameters"`
+	Comment    string            `json:"comment,omitempty"`
 }
 
 type Schema struct {
