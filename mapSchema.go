@@ -127,15 +127,17 @@ func mapUserSetChild(children []*corev1.SetOperation_Child) []*UserSet {
 func mapRelationType(relationType *corev1.AllowedRelation) *RelationType {
 	name, ns := splitNamespace(relationType.Namespace)
 
-	Relation, ok := relationType.RelationOrWildcard.(*corev1.AllowedRelation_Relation)
 	var relationName string
-	if !ok {
-		relationName = "*"
-	} else {
-		relationName = Relation.Relation
+	switch v := relationType.RelationOrWildcard.(type) {
+	case *corev1.AllowedRelation_Relation:
+		relationName = v.Relation
+
 		if relationName == "..." {
 			relationName = ""
 		}
+
+	case *corev1.AllowedRelation_PublicWildcard_:
+		relationName = "*"
 	}
 
 	caveat := relationType.RequiredCaveat
