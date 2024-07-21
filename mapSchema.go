@@ -10,6 +10,20 @@ import (
 	implv1 "github.com/authzed/spicedb/pkg/proto/impl/v1"
 )
 
+func splitNamespace(fullname string) (string, string) {
+	splits := strings.SplitN(fullname, "/", 2)
+	var name string
+	var ns string
+	if len(splits) == 2 {
+		ns = splits[0]
+		name = splits[1]
+	} else {
+		name = splits[0]
+		ns = ""
+	}
+	return name, ns
+}
+
 func mapDefinition(def *corev1.NamespaceDefinition) (*Definition, error) {
 	var relations []*Relation
 	var permissions []*Permission
@@ -24,16 +38,7 @@ func mapDefinition(def *corev1.NamespaceDefinition) (*Definition, error) {
 		}
 	}
 
-	splits := strings.SplitN(def.Name, "/", 2)
-	var name string
-	var ns string
-	if len(splits) == 2 {
-		ns = splits[0]
-		name = splits[1]
-	} else {
-		name = splits[0]
-		ns = ""
-	}
+	name, ns := splitNamespace(def.Name)
 
 	return &Definition{
 		Name:        name,
@@ -120,6 +125,8 @@ func mapUserSetChild(children []*corev1.SetOperation_Child) []*UserSet {
 }
 
 func mapRelationType(relationType *corev1.AllowedRelation) *RelationType {
+	name, ns := splitNamespace(relationType.Namespace)
+
 	Relation, ok := relationType.RelationOrWildcard.(*corev1.AllowedRelation_Relation)
 	var relationName string
 	if !ok {
@@ -139,9 +146,10 @@ func mapRelationType(relationType *corev1.AllowedRelation) *RelationType {
 		caveatName = ""
 	}
 	return &RelationType{
-		Type:     relationType.Namespace,
-		Relation: relationName,
-		Caveat:   caveatName,
+		Type:      name,
+		Namespace: ns,
+		Relation:  relationName,
+		Caveat:    caveatName,
 	}
 }
 
@@ -186,15 +194,16 @@ type Relation struct {
 }
 
 type RelationType struct {
-	Type     string `json:"type"`
-	Relation string `json:"relation,omitempty"`
-	Caveat   string `json:"caveat,omitempty"`
+	Type      string `json:"type"`
+	Namespace string `json:"namespace,omitempty"`
+	Relation  string `json:"relation,omitempty"`
+	Caveat    string `json:"caveat,omitempty"`
 }
 
 type Permission struct {
-	Name    string `json:"name"`
+	Name    string   `json:"name"`
 	UserSet *UserSet `json:"userSet"`
-	Comment string `json:"comment,omitempty"`
+	Comment string   `json:"comment,omitempty"`
 }
 
 type UserSet struct {
